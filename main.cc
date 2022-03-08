@@ -6,10 +6,11 @@
 //  Copyright (c) 2022 zhenliu <liuzhenm@mail.ustc.edu.cn>.
 //
 
+#include "coroutine.h"
 #include <iostream>
-
 int main()
 {
   std::cout << "Hello world" << std::endl;
+  Coroutine coroutine;
   return 0;
 }
