@@ -40,31 +40,48 @@ typedef void(* coroutine_func)(Schedule* , std::shared_ptr<void>);
 
 class Coroutine{
   private:
+    // store the function pointer
     coroutine_func _func;
+    // store the function argv
     std::shared_ptr<void> _ud;
-    std::shared_ptr<char> _stack;
+    // coroutine separate stack (use to resume)
+    std::shared_ptr<char> _local_stack;
+    // stack size
     std::ptrdiff_t _size;
+    // stack capacity
     std::ptrdiff_t _cap;
+    // coroutine state
     COROUTINE_STATUS _coroutine_status;
+    // context of coroutine
     ucontext_t _ctx;
 
   public:
     Coroutine(coroutine_func func = nullptr, std::shared_ptr<void> ud = nullptr);
     Coroutine& operator=(const Coroutine &) = delete;
     ~Coroutine();
-    void save_stack(char*, int32_t);
+
+    // save the shared stack to the separate stack of each coroutine
+    // @param shared_stack_top: top of the shared stack (the stack is allocated at heap, so the addr is bottom)
+    // @param size: size of the shared_stack
+    void save_stack(char* shared_stack_top, int32_t size);
+
     void set_status(COROUTINE_STATUS coroutine_status){_coroutine_status = coroutine_status;}
+
     COROUTINE_STATUS get_status(){return _coroutine_status;}
+
     ucontext_t* get_context(){return &_ctx;}
+
     std::ptrdiff_t get_size(){return _size;}
-    char * get_stack(){return _stack.get();}
+
+    char * get_stack(){return _local_stack.get();}
+
     void run_func(Schedule* shed){_func(shed, _ud);}
 };
 
 
 class Schedule{
   private:
-    std::shared_ptr<char>  _stack;
+    std::shared_ptr<char>  _shared_stack;
     ucontext_t _main;
     SCHEDULE_OPTIONS _sched_options;
     SCHEDULE_STATUS _sched_status;

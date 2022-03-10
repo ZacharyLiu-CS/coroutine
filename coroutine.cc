@@ -17,7 +17,7 @@
 #include <ucontext.h>
 
 Coroutine::Coroutine(coroutine_func func, std::shared_ptr<void> ud):
-  _func(func), _ud(ud), _stack(nullptr), _size(0), _cap(0),
+  _func(func), _ud(ud), _local_stack(nullptr), _size(0), _cap(0),
   _coroutine_status(COROUTINE_STATUS::READY){
   }
 
@@ -28,17 +28,17 @@ void Coroutine::save_stack(char* top, int32_t size){
   char dummy = 0;
   assert(top - &dummy <= size);
   if( _cap < top - &dummy ){
-    _stack.reset();
+    _local_stack.reset();
     _cap = top - &dummy ;
-    _stack = std::shared_ptr<char>(new char[_cap]);
+    _local_stack = std::shared_ptr<char>(new char[_cap]);
   }
   _size = top - &dummy;
-  memcpy(_stack.get(), &dummy, _size);
+  memcpy(_local_stack.get(), &dummy, _size);
 
 }
 
 Schedule::Schedule(SCHEDULE_OPTIONS sched_options): _sched_options(sched_options){
-  _stack = std::shared_ptr<char>(new char[_sched_options.stack_size]);
+  _shared_stack = std::shared_ptr<char>(new char[_sched_options.stack_size]);
   _co_list.resize(_sched_options.capacity);
   std::fill(_co_list.begin(), _co_list.end(), nullptr);
 }
@@ -83,7 +83,7 @@ void Schedule::resume(int32_t id){
     case COROUTINE_STATUS::READY:{
                                    ucontext_t* co_ctx = co->get_context();
                                    getcontext(co_ctx);
-                                   co_ctx->uc_stack.ss_sp = _stack.get();
+                                   co_ctx->uc_stack.ss_sp = _shared_stack.get();
                                    co_ctx->uc_stack.ss_size = _sched_options.stack_size;
                                    co_ctx->uc_link = &_main;
                                    _sched_status.running_id = id;
@@ -94,7 +94,7 @@ void Schedule::resume(int32_t id){
                                    break;
                                  }
     case COROUTINE_STATUS::SUSPEND:{
-                                     memcpy(_stack.get() + _sched_options.stack_size - co->get_size(), co->get_stack(), co->get_size());
+                                     memcpy(_shared_stack.get() + _sched_options.stack_size - co->get_size(), co->get_stack(), co->get_size());
                                      _sched_status.running_id = id;
                                      swapcontext(&_main, co->get_context());
                                      break;
@@ -106,7 +106,7 @@ void Schedule::resume(int32_t id){
 void Schedule::yield(){
   assert(_sched_status.running_id >= 0);
   auto co = _co_list[_sched_status.running_id];
-  co->save_stack(_stack.get() + _sched_options.stack_size, _sched_options.stack_size);
+  co->save_stack(_shared_stack.get() + _sched_options.stack_size, _sched_options.stack_size);
   co->set_status(COROUTINE_STATUS::SUSPEND);
   _sched_status.running_id = -1;
   swapcontext(co->get_context(), &_main);
