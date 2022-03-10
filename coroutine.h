@@ -78,9 +78,14 @@ class Schedule{
 
     static void main_func(uint32_t, uint32_t);
     void set_runningid(int32_t id){_sched_status.running_id = id;}
-    void decrease_coroutine(){_sched_status.coroutine_count --;}
+    void decrease_coroutine(int32_t id){_sched_status.coroutine_count --; _co_list[id].reset();}
 
-    COROUTINE_STATUS co_status(int32_t id){return _co_list[id]->get_status();}
+    COROUTINE_STATUS co_status(int32_t id){
+      if(_co_list[id] != nullptr)
+        return _co_list[id]->get_status();
+      else
+        return COROUTINE_STATUS::DEAD;
+    }
     SCHEDULE_STATUS& sched_status(){return _sched_status;}
     std::shared_ptr<Coroutine> get_coroutine(int32_t id){return _co_list[id];}
 };

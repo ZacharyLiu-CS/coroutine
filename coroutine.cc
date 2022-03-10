@@ -117,7 +117,6 @@ void Schedule::main_func(uint32_t low32, uint32_t high32){
   int32_t id = sched->sched_status().running_id;
   auto co = sched->get_coroutine(id);
   co->run_func(sched);
-  co->set_status(COROUTINE_STATUS::DEAD);
-  sched->set_runningid(id);
-  sched->decrease_coroutine();
+  sched->set_runningid(-1);
+  sched->decrease_coroutine(id);
 }

@@ -25,15 +25,17 @@ void foo(Schedule* s, std::shared_ptr<void> ud)
 
 void test(Schedule& s)
 {
-  auto argv1 = std::make_shared<int>(5);
-  auto argv2 = std::make_shared<int>(10);
+  auto argv1 = std::make_shared<int>(1);
+  auto argv2 = std::make_shared<int>(5);
   int32_t co1 = s.go(foo, argv1);
   int32_t co2 = s.go(foo, argv2);
   std::cout << "main start" << std::endl;
-  while(s.co_status(co1) != COROUTINE_STATUS::DEAD && s.co_status(co2) != COROUTINE_STATUS::DEAD) {
+  while(s.co_status(co1) || s.co_status(co2)) {
     s.resume(co1);
     s.resume(co2);
   }
+//  while( s.co_status(co2) != COROUTINE_STATUS::DEAD) {
+//   }
   std::cout << "main end" << std::endl;
 }
 
