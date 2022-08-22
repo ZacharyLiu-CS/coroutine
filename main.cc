@@ -10,28 +10,28 @@
 #include <iostream>
 #include <memory>
 
-void foo(Schedule *s, std::shared_ptr<void> ud) {
-  auto argv = std::static_pointer_cast<int>(ud);
-  std::cout << "argv: " << *argv << std::endl;
-  for (int i = 0; i < *argv; ++i) {
-    std::cout << "coroutine " << s->sched_status().running_id << " : " << i
-              << std::endl;
+struct message_list{
+  int32_t input;
+  int32_t output;
+  message_list(int i, int o): input(i), output(o){}
+};
+void generator(Schedule *s, std::shared_ptr<void> ud) {
+  auto argv = std::static_pointer_cast<message_list>(ud);
+  for (int i = 0; i < argv->input; ++i) {
+    argv->output = i;
     s->yield();
   }
 }
 
 void test(Schedule &s) {
-  auto argv1 = std::make_shared<int>(1);
-  auto argv2 = std::make_shared<int>(5);
-  int32_t co1 = s.go(foo, argv1);
-  int32_t co2 = s.go(foo, argv2);
+  auto argv1 = std::make_shared<message_list>(5,0);
+  int32_t co1 = s.go(generator, argv1);
   std::cout << "main start" << std::endl;
-  while (s.co_status(co1) || s.co_status(co2)) {
+  while (s.co_status(co1) ) {
     s.resume(co1);
-    s.resume(co2);
+    std::cout << "coroutine "<< co1 << " output: " << argv1->output << std::endl;
   }
-  //  while( s.co_status(co2) != COROUTINE_STATUS::DEAD) {
-  //   }
+
   std::cout << "main end" << std::endl;
 }
 
